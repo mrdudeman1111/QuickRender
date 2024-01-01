@@ -1,4 +1,5 @@
 ```mermaid
     graph TD;
-        A|I'm Hungry|-->B|Bad|
+        A-->B;
+        A-->C;
 ```
