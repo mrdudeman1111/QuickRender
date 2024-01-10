@@ -335,15 +335,14 @@ namespace Ek
 
       for(uint32_t i = 0; i < ImageCount; i++)
       {
-        Ek::Texture Temp;
-        Temp.Format = SurfaceFormat.format;
-        Temp.Image = SwapImages[i];
-        Temp.Layout = VK_IMAGE_LAYOUT_UNDEFINED;
-        Temp.Extent = WindowExtent;
-        Temp.allocSize = 0;
-        Temp.allocOffset = 0;
+        FrameBufferImages[i].resize(1);
 
-        FrameBufferImages[i].push_back(Temp);
+        FrameBufferImages[i][0].Format = SurfaceFormat.format;
+        FrameBufferImages[i][0].Image = SwapImages[i];
+        FrameBufferImages[i][0].Layout = VK_IMAGE_LAYOUT_UNDEFINED;
+        FrameBufferImages[i][0].Extent = WindowExtent;
+        FrameBufferImages[i][0].allocSize = 0;
+        FrameBufferImages[i][0].allocOffset = 0;
       }
 
       // this adds some meta data for the swapchain image, this will be used by the renderpass. (Usually they're also used during framebuffer creation)
@@ -524,13 +523,12 @@ namespace Ek
     return VK_SUCCESS;
   }
 
-  VkResult vulkanInterface::CreateFrameBuffer()
+  VkResult vulkanInterface::CreateFrameBuffers()
   {
     VkResult Err;
 
     // create framebufers/views
     {
-      //
       // we need an extra view array for the swapchain images
       FrameBuffers.resize(FrameBufferCount);
       FrameBufferImages.resize(FrameBufferCount);
@@ -538,12 +536,7 @@ namespace Ek
 
       for(uint32_t i = 0; i < FrameBufferCount; i++)
       {
-        // -1 to account for the fact that the swapchain images are stored in SwapchainImages
-        FrameBufferImages[i].resize(Attachments.size()-1);
-      }
-
-      for(uint32_t i = 0; i < FrameBufferCount; i++)
-      {
+        FrameBufferImages[i].resize(Attachments.size());
         FrameBufferViews[i].resize(Attachments.size());
       }
 
@@ -666,13 +659,9 @@ namespace Ek
 
   void vulkanInterface::Destroy()
   {
-    for(uint32_t i = 0; i < FrameBufferImages.size(); i++)
+    for(uint32_t i = 0; i < FrameBuffers.size(); i++)
     {
-      // start at 1 to ignore the swapchain image
-      for(uint32_t x = 1; x < FrameBufferImages[i].size(); x++)
-      {
-        FrameBufferImages[i][x].Destroy();
-      }
+      vkDestroyFramebuffer(Device, FrameBuffers[i], nullptr);
     }
 
     for(uint32_t i = 0; i < FrameBufferViews.size(); i++)
@@ -683,19 +672,29 @@ namespace Ek
       }
     }
 
-    vkDestroyDescriptorSetLayout(Device, ShaderResources.DescriptorLayout, nullptr);
-    vkDestroyDescriptorPool(Device, DescPool, nullptr);
-
-    for(uint32_t i = 0; i < FrameBuffers.size(); i++)
+    for(uint32_t i = 0; i < FrameBufferImages.size(); i++)
     {
-      vkDestroyFramebuffer(Device, FrameBuffers[i], nullptr);
+      // start at 1 to ignore the swapchain image
+      for(uint32_t x = 1; x < FrameBufferImages[i].size(); x++)
+      {
+        FrameBufferImages[i][x].Destroy();
+      }
+    }
+
+    if(DescPool != VK_NULL_HANDLE)
+    {
+      vkDestroyDescriptorSetLayout(Device, ShaderResources.DescriptorLayout, nullptr);
+      vkDestroyDescriptorPool(Device, DescPool, nullptr);
     }
 
     vkDestroyRenderPass(Device, RenderPass, nullptr);
 
     vkDestroySwapchainKHR(Device, Swapchain, nullptr);
 
-    vkDestroyFence(Device, AcquireFence, nullptr);
+    if(AcquireFence != VK_NULL_HANDLE)
+    {
+      vkDestroyFence(Device, AcquireFence, nullptr);
+    }
 
     vkDestroyCommandPool(Device, GraphicsPool, nullptr);
     vkDestroyCommandPool(Device, ComputePool, nullptr);

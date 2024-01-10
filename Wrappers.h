@@ -3,15 +3,14 @@
 #include <assimp/Importer.hpp>
 #include <assimp/config.h>
 
+#include <cwchar>
 #include <vector>
 #include <string>
+#include <vector>
 
 #include <glm/glm.hpp>
 
 #include "Memory.h"
-
-#include <vulkan/vulkan.h>
-#include <vulkan/vulkan_core.h>
 
 /*
  * defined in this file:

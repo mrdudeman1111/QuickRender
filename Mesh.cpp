@@ -4,6 +4,7 @@
 #include "Mesh.h"
 
 #include <glm/gtx/transform.hpp>
+#include <vulkan/vulkan_core.h>
 
 #include "assimp/mesh.h"
 #include "assimp/scene.h"
@@ -67,6 +68,13 @@ namespace Ek
     Vertices.clear();
     Indices.clear();
     Path.clear();
+
+    if(Albedo.Image != VK_NULL_HANDLE)
+    {
+      Albedo.Destroy();
+      vkDestroyImageView(*pDevice, AlbedoView, nullptr);
+      vkDestroySampler(*pDevice, AlbedoSampler, nullptr);
+    }
 
     pDevice = nullptr;
   }

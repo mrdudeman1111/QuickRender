@@ -1,12 +1,17 @@
 #include "Interface.h"
 #include <fstream>
+#include <stdexcept>
 #include <utility>
 #include <vulkan/vulkan_core.h>
 
 namespace Ek
 {
   PipelineInterface::PipelineInterface()
-  {}
+  {
+    DescriptorLayout = VK_NULL_HANDLE;
+    PipelineLayout = VK_NULL_HANDLE;
+    Pipeline = VK_NULL_HANDLE;
+  }
 
   void PipelineInterface::SetDescriptorLayout(VkDescriptorSetLayout DescLayout)
   {
@@ -25,10 +30,19 @@ namespace Ek
     pipeMaterial = &Mat;
     pDevice = &Device;
 
+    if(DescriptorLayout == VK_NULL_HANDLE)
+    {
+      throw std::runtime_error("Failed to create pipeline: DescriptorLayout is invalid, this means that either, the pipeline couldn't obtain the layout, or you haven't created the descripors yet");
+    }
+
+    VkDescriptorSetLayout Layouts[2];
+    Layouts[0] = DescriptorLayout;
+    Layouts[1] = Mat.GetDescriptorLayout();
+
     VkPipelineLayoutCreateInfo LayoutCI{};
     LayoutCI.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    LayoutCI.setLayoutCount = 1;
-    LayoutCI.pSetLayouts = &DescriptorLayout;
+    LayoutCI.setLayoutCount = 2;
+    LayoutCI.pSetLayouts = Layouts;
     LayoutCI.pushConstantRangeCount = Mat.Constants.size();
     LayoutCI.pPushConstantRanges = Mat.Constants.data();
 

@@ -34,6 +34,28 @@ namespace EkBackend
 
   void MemoryBlock::Destroy()
   {
+    if(Header != nullptr)
+    {
+      MemHeader* Next = Header;
+      MemHeader* Current = Header;
+
+      while(Current != nullptr)
+      {
+        if(Current->Next == nullptr)
+        {
+          Current->pObject->Destroy();
+          break;
+        }
+        else
+        {
+          Next = Current->Next;
+          Current->pObject->Destroy(); // Destroy function destroys object and it's memheader
+          Current = Next;
+          break;
+        }
+      }
+    }
+
     vkFreeMemory(*pDevice, Allocation, nullptr);
   }
 
@@ -75,9 +97,17 @@ namespace EkBackend
 
     if(Header->ID == AllocId)
     {
-      TargetHeader = Header->Next;
-      delete Header;
-      Header = TargetHeader;
+      if(Header->Next != nullptr)
+      {
+        TargetHeader = Header->Next;
+        delete Header;
+        Header = TargetHeader;
+      }
+      else
+      {
+        Header = nullptr;
+        delete Header;
+      }
 
       return;
     }
@@ -86,12 +116,6 @@ namespace EkBackend
 
     while(TargetHeader->Next != nullptr)
     {
-      if(TargetHeader->Next == nullptr)
-      {
-        cout << "Tried to delete Allocation with invalid ID : " << AllocId << '\n';
-        return;
-      }
-
       if(TargetHeader->Next->ID == AllocId)
       {
         MemHeader* Temp = TargetHeader->Next;
@@ -105,6 +129,10 @@ namespace EkBackend
 
       TargetHeader = TargetHeader->Next;
     }
+
+    cout << "Tried to delete Allocation with invalid ID : " << AllocId << '\n';
+
+    return;
   }
 
   bool MemoryBlock::AllocateBuffer(Ek::Buffer& inBuff)
@@ -128,12 +156,13 @@ namespace EkBackend
 
       Header->Start = 0;
       Header->MemorySize = ReqSize;
+      Header->pObject = &inBuff;
       Header->ID = IdIndex;
 
       inBuff.allocOffset = 0;
       inBuff.AllocationID = IdIndex;
 
-      vkBindBufferMemory(*pDevice, inBuff.Buffer, inBuff.allocMemory, inBuff.allocOffset);
+      vkBindBufferMemory(*pDevice, inBuff.Buffer, Allocation, inBuff.allocOffset);
 
       IdIndex++;
 
@@ -142,6 +171,7 @@ namespace EkBackend
 
     MemHeader* Curr = Header;
     MemHeader* NewHeader = new MemHeader;
+    NewHeader->pObject = &inBuff;
 
     while(Curr)
     {
@@ -231,7 +261,8 @@ namespace EkBackend
 
       Header->Start = 0;
       Header->MemorySize = ReqSize;
-      Header->ID = 0;
+      Header->pObject = &inTex;
+      Header->ID = IdIndex;
 
       inTex.allocOffset = 0;
       inTex.AllocationID = IdIndex;
@@ -246,6 +277,7 @@ namespace EkBackend
 
     MemHeader* Curr = Header;
     MemHeader* NewHeader = new MemHeader;
+    NewHeader->pObject = &inTex;
 
     while(Curr != nullptr)
     {

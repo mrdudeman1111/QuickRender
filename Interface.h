@@ -4,7 +4,6 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <vulkan/vulkan_core.h>
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -15,6 +14,7 @@
 
 #include "Mesh.h"
 #include "AssetMan.h"
+#include "ShaderResources.h"
 
 namespace Ek
 {
@@ -73,7 +73,7 @@ namespace Ek
       void AddBinding(VkDescriptorSetLayoutBinding Binding);
       void AddPushConstant(VkPushConstantRange Range);
 
-      VkDescriptorSetLayout* GetDescriptorLayout();
+      VkDescriptorSetLayout GetDescriptorLayout();
 
       void Destroy();
 
@@ -143,17 +143,15 @@ namespace Ek
       VkDevice* pDevice;
 
       uint32_t CameraBinding;
-      VkDescriptorBufferInfo BufferInfo[2];
-      VkWriteDescriptorSet VertexWrite;
-      VkWriteDescriptorSet FragmentWrite;
       void* BufferMemory;
+
+      Shaders::ShaderResource* wvpResource;
+      Shaders::ShaderResource* posResource;
 
       Ek::Buffer CameraBuffer;
 
       uint32_t Width;
       uint32_t Height;
-
-      VkDescriptorSet* DescriptorSet;
 
       glm::vec3 Position;
       glm::vec2 Rotation;
@@ -191,7 +189,7 @@ namespace Ek
         VkResult AddDescriptorBinding(VkDescriptorSetLayoutBinding* pBindings, uint32_t BindingCount);
 
         Material CreateMaterial();
-        void CreateMesh(const char* MeshPath, Mesh& pMesh);
+        Mesh* CreateMesh(const char* MeshPath);
         PipelineInterface* CreatePipeline(Material& Mat, VkOffset2D PipeOffset, VkExtent2D PipeExtent, bool bDepthEnable);
         void CreateCamera(Camera* pCam, uint32_t Binding);
 
@@ -210,7 +208,7 @@ namespace Ek
         VkResult CreateDevice();
         VkResult CreateSwapchain();
         VkResult CreateRenderpass(uint32_t sCount, VkPipelineBindPoint* BindPoint);
-        VkResult CreateFrameBuffer();
+        VkResult CreateFrameBuffers();
         VkResult CreateDescriptors();
 
         void Destroy();
@@ -252,18 +250,18 @@ namespace Ek
         std::vector<const char*> DeviceExtensions;
 
       // Device
-        VkQueue GraphicsQueue;
-        VkQueue ComputeQueue;
-        VkQueue TransferQueue;
+        VkQueue GraphicsQueue = VK_NULL_HANDLE;
+        VkQueue ComputeQueue = VK_NULL_HANDLE;
+        VkQueue TransferQueue = VK_NULL_HANDLE;
         VkDevice Device;
 
-        VkCommandPool ComputePool;
-        VkCommandPool GraphicsPool;
-        VkCommandPool TransferPool;
+        VkCommandPool ComputePool = VK_NULL_HANDLE;
+        VkCommandPool GraphicsPool = VK_NULL_HANDLE;
+        VkCommandPool TransferPool = VK_NULL_HANDLE;
 
       // Swapchain
         VkSurfaceFormatKHR SurfaceFormat;
-        VkSwapchainKHR Swapchain;
+        VkSwapchainKHR Swapchain = VK_NULL_HANDLE;
 
         std::vector<Ek::Wrappers::FrameBufferAttachment> Attachments;
 
@@ -277,10 +275,10 @@ namespace Ek
 
       // renderpass stuff
         uint32_t SubpassCount;
-        VkRenderPass RenderPass;
+        VkRenderPass RenderPass = VK_NULL_HANDLE;
 
       // Shader resource
-        VkDescriptorPool DescPool;
+        VkDescriptorPool DescPool = VK_NULL_HANDLE;
         std::vector<VkDescriptorPoolSize> Sizes;
         std::vector<VkDescriptorSetLayoutBinding> Bindings;
 

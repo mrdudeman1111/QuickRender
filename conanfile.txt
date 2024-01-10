@@ -4,6 +4,7 @@ assimp/5.2.2
 glm/0.9.9.8
 glfw/3.3.8
 bullet3/3.25
+freetype/2.13.2
 
 [generators]
 CMakeDeps

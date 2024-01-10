@@ -117,13 +117,17 @@ namespace Ek
     return Ret;
   }
 
-  void vulkanInterface::CreateMesh(const char* MeshPath, Mesh& pMesh)
+  Ek::Mesh* vulkanInterface::CreateMesh(const char* MeshPath)
   {
-    pMesh.Load(this, Device, ShaderResources, MeshPath);
+    Ek::Mesh* Ret = new Ek::Mesh();
+
+    Ret->Load(this, Device, ShaderResources, MeshPath);
 
     Ek::Wrappers::CommandBuffer cmdBuffer = GetCommandBuffer(Ek::eTransfer);
 
-    pMesh.Allocate(cmdBuffer);
+    Ret->Allocate(cmdBuffer);
+
+    return Ret;
   }
 
   PipelineInterface* vulkanInterface::CreatePipeline(Material& Mat, VkOffset2D PipeOffset, VkExtent2D PipeExtent, bool bDepthEnabled)

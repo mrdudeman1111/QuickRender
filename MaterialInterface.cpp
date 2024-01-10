@@ -9,7 +9,9 @@
 namespace Ek
 {
   Material::Material(VkDevice* inDevice) : pDevice(inDevice)
-  {}
+  {
+    Layout = VK_NULL_HANDLE;
+  }
 
   VkResult Material::LoadVertex(std::string Path)
   {
@@ -75,8 +77,14 @@ namespace Ek
     Constants.push_back(Range);
   }
 
-  VkDescriptorSetLayout* Material::GetDescriptorLayout()
+  VkDescriptorSetLayout Material::GetDescriptorLayout()
   {
+    // if layout is already made, recreate
+    if(Layout != VK_NULL_HANDLE)
+    {
+      vkDestroyDescriptorSetLayout(*pDevice, Layout, nullptr);
+    }
+
     VkDescriptorSetLayoutCreateInfo LayoutCI{};
     LayoutCI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     LayoutCI.bindingCount = Bindings.size();
@@ -88,13 +96,19 @@ namespace Ek
       return nullptr;
     }
 
-    return &Layout;
+    return Layout;
   }
 
   void Material::Destroy()
   {
     vkDestroyShaderModule(*pDevice, Vertex, nullptr);
     vkDestroyShaderModule(*pDevice, Fragment, nullptr);
+
+    if(Layout != VK_NULL_HANDLE)
+    {
+      vkDestroyDescriptorSetLayout(*pDevice, Layout, nullptr);
+    }
+
     pDevice = nullptr;
   }
 }

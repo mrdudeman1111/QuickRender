@@ -1,5 +1,6 @@
 #include "Wrappers.h"
 
+#include <cstdint>
 #include <glm/glm.hpp>
 #include <glm/ext/matrix_projection.hpp>
 #include <glm/gtx/transform.hpp>
@@ -10,6 +11,7 @@
 #include <assimp/scene.h>
 
 #include <vulkan/vulkan.h>
+#include <vulkan/vulkan_core.h>
 
 namespace Ek
 {

@@ -29,7 +29,7 @@ layout(location = 2) out vec2 outCoord;
 
 void main()
 {
-  gl_Position = Camera.Projection * Camera.View * MeshPositions.Meshes[Constants.PosIdx] * Camera.World * vec4(inPos, 1.f);
+  gl_Position = Camera.Projection * Camera.View * Camera.World * vec4(inPos, 1.f);
 
   outPos = (Camera.World * vec4(inPos, 1.f)).xyz;
   outNorm = (Camera.World * vec4(inNorm, 0.f)).xyz;

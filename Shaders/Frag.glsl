@@ -1,12 +1,12 @@
 #version 440
 #pragma shader_stage(fragment)
 
-layout(set = 0, binding = 1) uniform CameraBuffer
+layout(set = 0, binding = 2) uniform CameraBuffer
 {
   vec3 Position;
 } Camera;
 
-layout(set = 0, binding = 2) uniform sampler2D textures[2];
+layout(set = 0, binding = 3) uniform sampler2D textures[2];
 
 layout(push_constant) uniform PushConstant
 {

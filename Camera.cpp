@@ -1,5 +1,10 @@
 #include "Interface.h"
+#include "Wrappers.h"
+#include "ShaderResources.h"
+
 #include <glm/matrix.hpp>
+
+#include <vulkan/vulkan.h>
 
 namespace Ek
 {
@@ -22,11 +27,23 @@ namespace Ek
   {
     VkResult Err;
 
+    Shaders::ShaderResourceData wvpData;
+    Shaders::ShaderResourceData posData;
+
     // Setup references
     {
       pDevice = &inDevice;
-      DescriptorSet = &inShaderDescriptor;
-      CameraBinding = Binding;
+
+      wvpData.pSet = &inShaderDescriptor;
+      wvpData.Binding = Binding;
+      wvpData.Type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      wvpData.Element = 0;
+
+      posData.pSet = &inShaderDescriptor;
+      posData.Binding = Binding;
+      posData.Type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      posData.Element = 0;
+
       Width = CameraSize.width;
       Height = CameraSize.height;
     }
@@ -49,41 +66,21 @@ namespace Ek
 
     // Set update structures
     {
-      BufferInfo[0] = {};
-      BufferInfo[1] = {};
-      VertexWrite = {};
-      FragmentWrite = {};
+      wvpData.BufferInfos.resize(1);
 
-      BufferInfo[0].buffer = CameraBuffer.Buffer;
-      BufferInfo[0].offset = 0; // this is relative to the start of the buffer, not the start of the allocation
-      BufferInfo[0].range = sizeof(glm::mat4)*4;
+      wvpData.BufferInfos[0].buffer = CameraBuffer.Buffer;
+      wvpData.BufferInfos[0].offset = 0; // this is relative to the start of the buffer, not the start of the allocation
+      wvpData.BufferInfos[0].range = sizeof(glm::mat4)*4;
 
-      BufferInfo[1].buffer = CameraBuffer.Buffer;
-      BufferInfo[1].offset = sizeof(glm::mat4)*4;
-      BufferInfo[1].range = sizeof(glm::vec3);
+      posData.BufferInfos.resize(1);
 
-      VertexWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-
-      VertexWrite.dstSet = *DescriptorSet;
-      VertexWrite.dstBinding = CameraBinding;
-      VertexWrite.dstArrayElement = 0;
-
-      VertexWrite.descriptorCount = 1;
-      VertexWrite.pBufferInfo = &BufferInfo[0];
-
-      VertexWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-
-      FragmentWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-
-      FragmentWrite.dstSet = *DescriptorSet;
-      FragmentWrite.dstBinding = 1;
-      FragmentWrite.dstArrayElement = 0;
-
-      FragmentWrite.descriptorCount = 1;
-      FragmentWrite.pBufferInfo = &BufferInfo[1];
-
-      FragmentWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      posData.BufferInfos[0].buffer = CameraBuffer.Buffer;
+      posData.BufferInfos[0].offset = sizeof(glm::mat4)*4;
+      posData.BufferInfos[0].range = sizeof(glm::vec3);
     }
+
+    wvpResource = new Shaders::ShaderResource(wvpData);
+    posResource = new Shaders::ShaderResource(posData);
    
     CameraMat = glm::mat4(1.f);
     Position = glm::vec3(0.f, 0.f, 5.f);
@@ -152,8 +149,8 @@ namespace Ek
 
     memcpy(BufferMemory, &MVP, sizeof(MVP));
 
-    vkUpdateDescriptorSets(*pDevice, 1, &VertexWrite, 0, nullptr);
-    vkUpdateDescriptorSets(*pDevice, 1, &FragmentWrite, 0, nullptr);
+    wvpResource->Update();
+    posResource->Update();
   }
 }
 

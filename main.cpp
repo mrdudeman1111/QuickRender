@@ -1,3 +1,5 @@
+#include <GLFW/glfw3.h>
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
@@ -7,6 +9,8 @@
 
 #include "Interface.h"
 #include "Memory.h"
+#include "Mesh.h"
+#include "Wrappers.h"
 
 /*
   class Texture:
@@ -134,23 +138,23 @@ public:
 
 int main()
 {
-  Ek::vulkanInterface* Renderer = new Ek::vulkanInterface();
+  Ek::vulkanInterface Renderer;
 
-  Renderer->AddInstLayer("VK_LAYER_KHRONOS_validation");
-  Renderer->AddInstExtension(VK_KHR_SURFACE_EXTENSION_NAME);
+  Renderer.AddInstLayer("VK_LAYER_KHRONOS_validation");
+  Renderer.AddInstExtension(VK_KHR_SURFACE_EXTENSION_NAME);
 
-  if(Renderer->CreateInstance(RenderExtent) != VK_SUCCESS)
+  if(Renderer.CreateInstance(RenderExtent) != VK_SUCCESS)
   {
     throw std::runtime_error("Failed to create instance");
   }
 
-  if(Renderer->CreatePhysicalDevice() != VK_SUCCESS)
+  if(Renderer.CreatePhysicalDevice() != VK_SUCCESS)
   {
     throw std::runtime_error("Failed to pick physical device");
   }
 
-  Renderer->AddDevExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-  if(Renderer->CreateDevice() != VK_SUCCESS)
+  Renderer.AddDevExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+  if(Renderer.CreateDevice() != VK_SUCCESS)
   {
     throw std::runtime_error("Failed to create vulkan device");
   }
@@ -161,38 +165,136 @@ int main()
   {
     Depth.Format = VK_FORMAT_D32_SFLOAT;
     Depth.Usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
     Depth.Aspect = VK_IMAGE_ASPECT_DEPTH_BIT;
+
     Depth.StoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-    Depth.LoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    Depth.LoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     Depth.StencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-    Depth.StencilLoadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    Depth.StencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+
     Depth.InitialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     Depth.FinalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
     Depth.SubpassLayouts.push_back(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     Depth.SubpassAttachments.push_back(Ek::eDepth);
   }
 
-  Renderer->AddAttachment(Depth);
+  Renderer.AddAttachment(Depth);
 
-  if(Renderer->CreateSwapchain() != VK_SUCCESS)
+  if(Renderer.CreateSwapchain() != VK_SUCCESS)
   {
     throw std::runtime_error("Failed to create swapchain");
   }
 
   VkPipelineBindPoint Subpasses[1] = { VK_PIPELINE_BIND_POINT_GRAPHICS };
-  if(Renderer->CreateRenderpass(1, Subpasses) != VK_SUCCESS)
+  if(Renderer.CreateRenderpass(1, Subpasses) != VK_SUCCESS)
   {
     throw std::runtime_error("Failed to create renderpass");
   }
 
-  if(Renderer->CreateFrameBuffer() != VK_SUCCESS)
+  if(Renderer.CreateFrameBuffers() != VK_SUCCESS)
   {
     throw std::runtime_error("Failed to create frame buffers");
   }
 
-  Renderer->Destroy();
+  // Setup Shader resources
+  {
+    VkDescriptorSetLayoutBinding Bindings[3]{};
+
+    // Camera
+    Bindings[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    Bindings[0].binding = 0;
+    Bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    Bindings[0].descriptorCount = 1;
+
+    // Binding 1 in vertex shader is not used right now
+
+    Bindings[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    Bindings[1].binding = 2;
+    Bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    Bindings[1].descriptorCount = 1;
+
+    Bindings[2].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    Bindings[2].binding = 3;
+    Bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    Bindings[2].descriptorCount = 2;
+
+    VkPushConstantRange fragConstants{};
+    fragConstants.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragConstants.offset = 0;
+    fragConstants.size = sizeof(uint32_t) * 2;
+
+    Renderer.AddDescriptorBinding(Bindings, 3);
+    Renderer.CreateDescriptors();
+  }
+
+  VkPushConstantRange fragConstants{};
+  fragConstants.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+  fragConstants.offset = 0;
+  fragConstants.size = sizeof(uint32_t) * 2;
+
+  Ek::Material MainMat = Renderer.CreateMaterial();
+  MainMat.LoadVertex("Shaders/Vert.spv");
+  MainMat.LoadFragment("Shaders/Frag.spv");
+  MainMat.AddPushConstant(fragConstants);
+
+  Ek::PipelineInterface* pMainPipe = Renderer.CreatePipeline(MainMat, {0,0}, RenderExtent, true);
+
+  Ek::Mesh* MainMesh = Renderer.CreateMesh("Pawn.dae");
+  Ek::Mesh* envMesh = Renderer.CreateMesh("SkySphere.dae");
+
+  uint32_t MainMeshIdx = 0;
+  uint32_t envMeshIdx = 1;
+
+  MainMesh->SetTextureBinding(3, MainMeshIdx);
+  envMesh->SetTextureBinding(3, envMeshIdx);
+
+  Player User;
+  Renderer.CreateCamera((Ek::Camera*)&User, 0);
+
+  Ek::Wrappers::CommandBuffer RenderBuffer = Renderer.GetCommandBuffer(Ek::eGraphics);
+
+  glfwSetInputMode(Renderer.Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+  while(!glfwWindowShouldClose(Renderer.Window))
+  {
+    glfwPollEvents();
+
+    User.Update(Renderer.Window);
+  
+    RenderBuffer.BeginCommand();
+      Renderer.BeginRender(RenderBuffer);
+
+        Renderer.BindShaderResources(RenderBuffer, pMainPipe);
+        pMainPipe->Bind(RenderBuffer);
+
+          vkCmdPushConstants(RenderBuffer.Buffer, pMainPipe->PipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(uint32_t), sizeof(uint32_t), &User.bShading);
+
+          vkCmdPushConstants(RenderBuffer.Buffer, pMainPipe->PipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t), &envMeshIdx);
+          envMesh->Draw(RenderBuffer);
+
+          vkCmdPushConstants(RenderBuffer.Buffer, pMainPipe->PipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(uint32_t), &MainMeshIdx);
+          MainMesh->Draw(RenderBuffer);
+
+      Renderer.EndRender(RenderBuffer);
+    RenderBuffer.EndComand(true);
+
+    Renderer.Present(RenderBuffer);
+
+    RenderBuffer.FenceWait();
+  }
+
+  RenderBuffer.Delete();
+  delete MainMesh;
+  delete envMesh;
+  pMainPipe->~PipelineInterface();
+  MainMat.Destroy();
+  Renderer.Destroy();
 
   std::cout << "Clean run\n";
+
+  return 0;
 }
 
 /*

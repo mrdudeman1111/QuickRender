@@ -3,6 +3,8 @@
 #include <assimp/Importer.hpp>
 #include <string>
 
+#include <glm/glm.hpp>
+
 #include "Memory.h"
 #include "Wrappers.h"
 
@@ -28,10 +30,11 @@ namespace Ek
 
     protected:
       VkDevice* pDevice;
-      glm::mat4 Transform;
 
-      std::vector<Vertex> Vertices;
-      std::vector<uint32_t> Indices;
+      // Object Info
+        glm::mat4 Transform;
+        std::vector<Vertex> Vertices;
+        std::vector<uint32_t> Indices;
 
       Ek::Buffer VertexBuffer;
       Ek::Buffer IndexBuffer;
@@ -60,18 +63,20 @@ namespace Ek
 
       // Transit memory
         void* pTemp;
+        Ek::Buffer TransitBuffer;
         Ek::Wrappers::CommandBuffer cmdBuffer;
 
-        Ek::Buffer TransitBuffer;
+      // Descriptor Info
+        EkBackend::DescriptorSet* SceneSet;
+        std::pair<uint32_t, uint32_t> ShaderLocation;
 
-      EkBackend::DescriptorSet* SceneSet;
-      std::pair<uint32_t, uint32_t> ShaderLocation;
+      // Texture Info
+        Ek::Texture Albedo;
+        VkImageView AlbedoView;
+        VkSampler AlbedoSampler;
 
-      VkSampler AlbedoSampler;
-      Ek::Texture Albedo;
-      VkImageView AlbedoView;
-
-      EkBackend::AllocateInterface* Alloc;
+      // Allocator
+        EkBackend::AllocateInterface* Alloc;
   };
 }
 

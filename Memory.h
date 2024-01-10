@@ -4,7 +4,6 @@
 #include <queue>
 
 #include <vulkan/vulkan.h>
-#include <vulkan/vulkan_core.h>
 
 /* Forward declarations */
 namespace EkBackend
@@ -40,6 +39,7 @@ namespace Ek
       uint32_t allocOffset;
       eMemoryType allocMemoryType;
 
+      virtual void Destroy() = 0;
       void Map(void** Pointer);
 
     protected:
@@ -86,6 +86,8 @@ namespace EkBackend
     uint32_t Start;
 
     uint32_t ID = -1;
+
+    Ek::AllocatedObject* pObject;
 
     MemHeader* Next = nullptr;
   };
